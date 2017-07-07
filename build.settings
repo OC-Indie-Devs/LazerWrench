@@ -1,0 +1,121 @@
+-- =============================================================
+-- Your Copyright Statement Goes Here
+-- =============================================================
+--  build.projectSettings
+-- =============================================================
+-- https://docs.coronalabs.com/daily/guide/distribution/buildSettings/index.html
+-- =============================================================
+
+settings = {
+-------------------------------------------------------------------------------
+--  Debug Settings 
+-------------------------------------------------------------------------------
+   build = {
+      neverStripDebugInfo             = true,
+   },
+
+
+-------------------------------------------------------------------------------
+--  Orientation Settings 
+-------------------------------------------------------------------------------
+   orientation = {
+      default                         = "landscapeRight",
+      supported                       = { "landscapeRight", "landscapeLeft", },
+   },
+
+
+-------------------------------------------------------------------------------
+--  Plugins
+-------------------------------------------------------------------------------
+   plugins = {
+   },
+
+
+-------------------------------------------------------------------------------
+--  iOS Settings
+-------------------------------------------------------------------------------
+   iphone = {
+      -- https://developer.apple.com/library/ios/documentation/General/Reference/InfoPlistKeyReference/Introduction/Introduction.html#//apple_ref/doc/uid/TP40009248-SW1
+      plist = {
+         CFBundleDisplayName             = "LD35_Shapeshifter",
+         CFBundleName                    = "LD35_Shapeshifter",
+         UIApplicationExitsOnSuspend     = false,
+         UIPrerenderedIcon               = true,
+         UIStatusBarHidden               = true,
+         MinimumOSVersion                = "7",
+         skipPNGCrush                    = false,
+         -- https://developer.apple.com/library/ios/documentation/General/Reference/InfoPlistKeyReference/Articles/iPhoneOSKeys.html#//apple_ref/doc/uid/TP40009252-SW3
+         UIRequiredDeviceCapabilities = {
+         },
+
+         CFBundleIconFiles = {
+         },
+
+         UILaunchImages = {
+         },
+
+         NSAppTransportSecurity = {
+            NSAllowsArbitraryLoads          = true,
+         },
+      },
+   },
+
+-------------------------------------------------------------------------------
+--  Android Settings 
+-------------------------------------------------------------------------------
+   android = {
+      versionCode                     = "100",
+      largeHeap                       = true,
+      usesExpansionFile               = false,
+      supportsTV                      = false,
+      isGame                          = true,
+      allowAppsReadOnlyAccessToFiles  = false,
+      minSdkVersion                   = "14",
+      usesPermissions = {
+      },
+
+      applicationChildElements  = {
+      },
+
+      usesFeatures = {
+      },
+
+      supportsScreens = {
+      },
+   },
+
+-------------------------------------------------------------------------------
+--  Desktop Settings 
+-------------------------------------------------------------------------------
+   window = {
+      defaultMode                     = "normal",
+      resizable                       = true,
+      enableCloseButton               = true,
+      suspendWhenMinimized            = true,
+      enableMaximizeButton            = true,
+      defaultViewWidth                = 1024,
+      defaultViewHeight               = 768,
+      minViewWidth                    = 480,
+      minViewHeight                   = 320,
+      titleText = {
+         default  = "LD35_Shapeshifter",
+         ["en‐us"] = "LD35_Shapeshifter (English‐USA)",
+         ["en‐gb"] = "LD35_Shapeshifter (English‐UK)",
+         ["en"]   = "LD35_Shapeshifter (English)",
+         ["fr"]   = "LD35_Shapeshifter (French)",
+         ["es"]   = "LD35_Shapeshifter (Spanish)",
+      },
+   },
+
+
+-------------------------------------------------------------------------------
+--  File Exclusions 
+-------------------------------------------------------------------------------
+   excludeFiles = {
+      all      = { "*secret.txt", },
+      iphone   = { "Icon-*dpi.png", "music/*.ogg", },
+      osx      = { "Default*.png", "Icon*.png", "Icon*.ico", "Icon*.icns", },
+      win32    = { "Default*.png", "Icon*.png", "Icon*.ico", "Icon*.icns", },
+   },
+}
+return settings
