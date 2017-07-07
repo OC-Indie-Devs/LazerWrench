@@ -1,7 +1,7 @@
 --
 -- created with TexturePacker (http://www.codeandweb.com/texturepacker)
 --
--- $TexturePacker:SmartUpdate:bf507704fd437d33ba30b788dafd5165:e42cb841127f026b8b3d9effc4250450:29c8e2251d63336aecadaa22625a871d$
+-- $TexturePacker:SmartUpdate:eb37fae778736a072a5822bc6a8781b7:f682d021633c83512f0bacbf5f5c4bd0:29c8e2251d63336aecadaa22625a871d$
 --
 -- local sheetInfo = require("mysheet")
 -- local myImageSheet = graphics.newImageSheet( "mysheet.png", sheetInfo:getSheet() )
@@ -46,7 +46,7 @@ SheetInfo.sheet =
             height=102,
 
             sourceX = 74,
-            sourceY = 75,
+            sourceY = 85,
             sourceWidth = 256,
             sourceHeight = 256
         },
@@ -58,19 +58,19 @@ SheetInfo.sheet =
             height=106,
 
             sourceX = 87,
-            sourceY = 77,
+            sourceY = 87,
             sourceWidth = 256,
             sourceHeight = 256
         },
         {
             -- RUN_002
-            x=1,
-            y=1751,
+            x=63,
+            y=1931,
             width=64,
             height=106,
 
             sourceX = 112,
-            sourceY = 77,
+            sourceY = 87,
             sourceWidth = 256,
             sourceHeight = 256
         },
@@ -82,7 +82,7 @@ SheetInfo.sheet =
             height=102,
 
             sourceX = 78,
-            sourceY = 76,
+            sourceY = 86,
             sourceWidth = 256,
             sourceHeight = 256
         },
@@ -94,19 +94,19 @@ SheetInfo.sheet =
             height=108,
 
             sourceX = 90,
-            sourceY = 75,
+            sourceY = 85,
             sourceWidth = 256,
             sourceHeight = 256
         },
         {
             -- RUN_005
             x=1,
-            y=1859,
+            y=1931,
             width=60,
             height=108,
 
             sourceX = 110,
-            sourceY = 75,
+            sourceY = 85,
             sourceWidth = 256,
             sourceHeight = 256
         },
@@ -185,7 +185,7 @@ SheetInfo.sheet =
         {
             -- WALL_000
             x=1,
-            y=1619,
+            y=1799,
             width=78,
             height=130,
 
@@ -194,10 +194,22 @@ SheetInfo.sheet =
             sourceWidth = 256,
             sourceHeight = 256
         },
+        {
+            -- jump_throw
+            x=1,
+            y=1619,
+            width=78,
+            height=178,
+
+            sourceX = 90,
+            sourceY = 30,
+            sourceWidth = 256,
+            sourceHeight = 256
+        },
     },
     
-    sheetContentWidth = 118,
-    sheetContentHeight = 1968
+    sheetContentWidth = 128,
+    sheetContentHeight = 2040
 }
 
 SheetInfo.frameIndex =
@@ -218,6 +230,7 @@ SheetInfo.frameIndex =
     ["THROW_002"] = 13,
     ["THROW_003"] = 14,
     ["WALL_000"] = 15,
+    ["jump_throw"] = 16,
 }
 
 function SheetInfo:getSheet()

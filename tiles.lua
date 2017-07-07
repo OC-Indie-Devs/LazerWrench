@@ -12,11 +12,34 @@
 local tiles = {}
 
 tiles.sheets = {
-    square = "sheet_square"
+    square = "sheet_square",
+    player = "sheet_player"
 }
 
 tiles.wall = "spr_walltile1"
+tiles.topWall = "spr_walltile_top"
+tiles.cornerWall = "spr_walltile_corner"
 tiles.bg = "spr_bg"
+tiles.wrench = "LAZER_WRENCH"
+
+tiles.robots = {
+    robot1 = {
+        top = {
+            { image="ROBOT/CORNER", rotation=90 },
+            { image="ROBOT/BLOCK" },
+            { image="ROBOT/CORNER", rotation=180 }
+        },
+        bottom = {
+            { image="ROBOT/CORNER" },
+            { image="ROBOT/CORE" },
+            { image="ROBOT/CORNER", rotation=-90 }
+        }
+    }
+}
+
+tiles.robotCore = tiles.robots.robot1.bottom[2]
+
+tiles.player = { image="STAND_000", sheet="player" }
 
 tiles.size = 96
 
@@ -24,6 +47,7 @@ tiles.size = 96
 function tiles.getTile( tileName, options )
     local o = options or {}
     
+    local img
     if ( o.sheet ) then
         local sheet = tiles.sheets[o.sheet]
         local si = require( sheet )
@@ -31,26 +55,24 @@ function tiles.getTile( tileName, options )
         local numImgs = #si.sheet.frames
         local fName = "images/" .. sheet .. ".png"
         local imageSheet = graphics.newImageSheet( fName, system.ResourceDirectory, si:getSheet() )
-        local img = display.newImageRect( imageSheet, frameIndex, tiles.size, tiles.size )
-        if ( o.x ) then
-            img.x = o.x
-        end
-        if ( o.y ) then
-            img.y = o.y
-        end
-        return img
+        img = display.newImageRect( imageSheet, frameIndex, tiles.size, tiles.size )
     else
         local fn = "images/" .. tileName .. ".png"
-        local img = display.newImageRect( fn, system.ResourceDirectory, tiles.size, tiles.size )
-        if ( o.x ) then
-            img.x = o.x
-        end
-        if ( o.y ) then
-            img.y = o.y
-        end
-        return img
+        img = display.newImageRect( fn, system.ResourceDirectory, tiles.size, tiles.size )
     end
-    return nil
+    if ( o.x ) then
+        img.x = o.x
+    end
+    if ( o.y ) then
+        img.y = o.y
+    end
+    if ( o.xScale ) then
+        img.xScale = o.xScale
+    end
+    if ( o.rotation ) then
+        img.rotation = o.rotation
+    end
+    return img
 end
 
 

@@ -12,6 +12,7 @@
 
 local composer = require( "composer" )
 local scene = composer.newScene()
+local params = nil
 
 local physics = require( "physics" )
 physics.start()
@@ -22,10 +23,19 @@ physics.setTimeStep( 1/30 )
 local ui = require( "ui" )
 local tiles = require( "tiles" )
 local ls = require( "loadsave" )
+local sound = require( "sounds" )
+local fx = require( "effects" )
 
 local platformFriction = 0.5
 local playerFriction = 0.3
 local wallFriction = 0.8
+local wrenchForce = -10
+local gridMinY = -_G.CH * 2
+
+local playerStart = {
+    x = 1500,
+    y = -gridMinY + _G.CH - 300,
+}
 
 local btns = {}
 local grp = {}
@@ -34,6 +44,8 @@ local gridID = 1
 local gridSaveFile = "gridsave"
 local gridText
 local outlines = {}
+local lastThrow = 0
+local levelRobot
 
 local keyDown = {} -- keys that are pressed and held
 
@@ -53,6 +65,28 @@ local function createWalls()
         rWall.name = "wall"
         physics.addBody( rWall, "static", { friction=platformFriction, bounce=0 } )
     end
+    for i = 1, 18 do
+        local tWall = tiles.getTile( tiles.topWall )
+        grp.terrain:insert( tWall )
+        tWall.x = i * tiles.size + tiles.size / 2
+        tWall.y = -tiles.size / 2
+        tWall.name = "wall"
+        physics.addBody( tWall, "static", { friction=platformFriction, bounce=0 } )
+    end
+    local lCorner = tiles.getTile( tiles.cornerWall )
+    grp.terrain:insert( lCorner )
+    lCorner.x = tiles.size / 2
+    lCorner.y = -tiles.size / 2
+    lCorner.name = "wall"
+    physics.addBody( lCorner, "static", { friction=platformFriction, bounce=0 } )
+    local rCorner = tiles.getTile( tiles.cornerWall )
+    grp.terrain:insert( rCorner )
+    rCorner.x = _G.CW - tiles.size / 2
+    rCorner.y = -tiles.size / 2
+    rCorner.rotation = 90
+    rCorner.name = "wall"
+    physics.addBody( lCorner, "static", { friction=platformFriction, bounce=0 } )
+    
 end
 
 
@@ -123,21 +157,125 @@ local function addShape( shape, blockID )
 end
 
 
-local function addImage( image, blockID )
+local function spawnRobot( rob, blockID, lx, ly )
+    lr = {}
+    lr.parts = {}
+    local g = grp.terrain
+    local rx = lx - 288
+    local ry = ly - 288
+    for i = 1, #rob.top do
+        local fn = "images/" .. rob.top[i].image .. ".png"
+        local robImg = display.newImageRect( g, fn, system.ResourceDirectory, 288, 288 )
+        if ( rob.top[i].rotation ) then
+            robImg.rotation = rob.top[i].rotation
+        end
+        robImg.x = rx
+        robImg.y = ry
+        rx = rx + 288
+        robImg.image = rob.top[i].image
+        robImg.name = "robot"
+        robImg.blockID = blockID
+        makePhysical( robImg )
+        table.insert( lr.parts, robImg )
+    end
+    rx = lx - 288
+    ry = ly
+    for i = 1, #rob.bottom do
+        local fn = "images/" .. rob.bottom[i].image .. ".png"
+        local robImg = display.newImageRect( g, fn, system.ResourceDirectory, 288, 288 )
+        if ( rob.bottom[i].rotation ) then
+            robImg.rotation = rob.bottom[i].rotation
+        end
+        robImg.x = rx
+        robImg.y = ry
+        rx = rx + 288
+        robImg.image = rob.bottom[i].image
+        robImg.name = "robot"
+        robImg.blockID = blockID
+        makePhysical( robImg )
+        table.insert( lr.parts, robImg )
+        if ( rob.bottom[i].image == "ROBOT/CORE" ) then
+            lr.core = robImg
+            robImg.hit = 0
+            robImg.collision = function( self, event )
+                if ( self.fixed ) then
+                    return true
+                end
+                if ( event.phase == "began" ) then
+                    if ( event.other.name == "wrench" ) then
+                        if not ( event.other.hit ) then
+                            event.other.hit = true
+                            -- play hit sound
+                            sound.play( "robothit1" )
+                            self.hit = self.hit + 1
+                            dbg.out( "robot hits = " .. self.hit )
+                            if ( self.hit == 20 ) then
+                                self.fixed = true
+                                dbg.out( "robot fixed!" )
+                                sound.play( "robotdeath1" )
+                            end
+                        end
+                        self.fill.effect = "filter.exposure"
+                        self.fill.effect.exposure = 1.25
+                        timer.performWithDelay( 200, 
+                            function()
+                                self.fill.effect = nil
+                            end
+                        )
+                        fx.exposureFlash( self )
+                        local opts = {
+                            parent = grp.terrain,
+                            x = event.other.x,
+                            y = event.other.y,
+                        }
+                        timer.performWithDelay( 10, 
+                            function()
+                                fx.sparks( opts )
+                            end
+                        )
+                    end
+                end
+                return true
+            end
+            robImg:addEventListener( "collision" )
+        end
+    end
+    return lr
+end
+
+
+local function addImage( image, blockID, options )
+    local o = options or {}
     local g = grp.terrain
     
     local lx, ly = grp.grid[blockID]:localToContent( 0, 0 )
-    dbg.out( "addShape: add " .. image .. " to grid " .. blockID .. " x=" .. lx .. " y=" .. ly )
-    local fn = "images/" .. image .. ".png"
-    local tileImg = display.newImageRect( g, fn, system.ResourceDirectory, 288, 288 )
-    tileImg.x = lx
-    tileImg.y = ly
-    tileImg.name = "platform"
-    tileImg.blockID = blockID
-    tileImg.image = image
-    tileImg.rotation = tileImg.rotation
-    makePhysical( tileImg )
-    return tileImg
+    dbg.out( "addImage: add " .. image .. " to grid " .. blockID .. " x=" .. lx .. " y=" .. ly )
+    local tileImg
+    if ( image == "STAND_000" ) then
+        playerStart.x = lx
+        playerStart.y = ly
+        playerStart.xScale = o.xScale or 1
+        return
+    end
+    if ( image == "ROBOT/CORE" ) then
+        dbg.out( "BUILDING A ROBOT" )
+        levelRobot = spawnRobot( tiles.robots.robot1, blockID, lx, ly )
+    else
+        local fn = "images/" .. image .. ".png"
+        tileImg = display.newImageRect( g, fn, system.ResourceDirectory, 288, 288 )
+        tileImg.name = "platform"
+        tileImg.image = image
+        tileImg.x = lx
+        tileImg.y = ly
+        if ( o.xScale ) then
+            tileImg.xScale = tileImg.xScale
+        end
+        if ( o.rotation ) then
+            tileImg.rotation = tileImg.rotation
+        end
+        tileImg.blockID = blockID
+        makePhysical( tileImg )
+    end
 end
 
 
@@ -147,7 +285,7 @@ local function addToGrid( blockID, options )
     local block = grp.grid[blockID]
     local newImg
     if ( o.image ) then
-        newImg = addImage( o.image, blockID )
+        newImg = addImage( o.image, blockID, o )
     elseif ( o.shape ) then
         newImg = addShape( o.shape, blockID )
     end
@@ -192,6 +330,7 @@ end
 -- loads a specific grid
 local function loadGrid()
     clearTerrain()
+    grp.cam.y = 0
     local g = grp.grid
     
     local savedGrids = getSavedGrids()
@@ -202,7 +341,7 @@ local function loadGrid()
     if ( gridID == 0 ) then
         dbg.out( "loadGrid: There are 0 saved grids" )
         gridID = 1
-        gridText.text = gridID
+        gridText.text = "LEVEL " .. gridID
         return
     end
     
@@ -231,7 +370,8 @@ local function loadGrid()
     else
         dbg.out( "loadGrid: " .. fn .. " could not be loaded" )
     end
-    gridText.text = gridID
+    gridText.text = "LEVEL " .. gridID
+    grp.cam.y = grp.grid.yMin
 end
 
 
@@ -292,9 +432,9 @@ local function createGrid()
 end
 
 
-local function gotoGridMaker()
-    dbg.out( "gotoGridMaker" )
-    composer.gotoScene( "gridMaker", {} )
+local function gotoTitle()
+    dbg.out( "gotoTitle" )
+    composer.gotoScene( "title", { params={ gridID=gridID } } )
 end
 
 
@@ -336,12 +476,12 @@ local function spawnPlayer()
     end
     player = require( "player").new()
     grp.terrain:insert( player )
-    player.x = 1500
-    player.y = -grp.grid.yMin + _G.CH - 300
-    player.xScale = -1
+    player.x = playerStart.x
+    player.y = playerStart.y
+    player.xScale = playerStart.xScale or -1
     local d = 0.5
     
-    local legs = { -48, 0,   48, 0,   0, 72 }
+    local legs = { -48, 0,   48, 0,   0, 70 }
     local torso = { -48, -1,  48, -1,  0, -72 }
     
 --    physics.addBody( player, "dynamic", { density=d, friction=0.3, radius=48 } )
@@ -361,46 +501,56 @@ local function updateCamera()
         destY = grp.grid.yMin
     end
     grp.cam.y = destY
---    
---    
---    local yDiff = grp.cam.y - destY
---    if ( yDiff > 300 ) then
---        if ( grp.cam.tsn ) then
---            transition.cancel( grp.cam.tsn )
---        end
---        local oc = function() grp.cam.tsn = nil end
---        grp.cam.tsn = transition.to( grp.cam, { time=500, y=destY, onComplete=oc } )
---    else
---        if ( grp.cam.y ~= destY ) then
---            if ( grp.cam.tsn == nil ) then
---                local oc = function() grp.cam.tsn = nil end
---                grp.cam.tsn = transition.to( grp.cam, { time=2000, y=destY, onComplete=oc } )
---            end
---        end
---    end
 end
+
+
+local function cleanupTerrain()
+    for i = grp.terrain.numChildren, 1, -1 do
+        local obj = grp.terrain[i]
+        if ( obj.y > -grp.grid.yMin + _G.CH * 2 ) then
+            obj:removeSelf()
+        end
+    end
+end
+
 
 --- called every frame
 local function update()
-    if ( player ) then
+    if ( player ) and ( player.y ) then
         if ( player.y > -grp.grid.yMin + _G.CH * 2 ) then
             player:removeSelf()
             spawnPlayer()
         end
         updateCamera()
-        if ( keyDown["left"] ) then
+        if ( keyDown["left"] ) or ( keyDown["a"] ) then
             player:move( "left" )
         end
-        if ( keyDown["right"] ) then
+        if ( keyDown["right"] ) or ( keyDown["a"] )  then
             player:move( "right" )
         end
-        if ( keyDown["space"] ) then
+        if ( keyDown["up"] ) or ( keyDown["w"] )  then
             if ( keyDown["left"] ) then
                 player:jump( "left" )
             elseif ( keyDown["right"] ) then
                 player:jump( "right" )
             else
                 player:jump()
+            end
+        end
+        if ( keyDown["space"] ) or ( keyDown["z"] ) then
+            local thisThrow = system.getTimer()
+            if ( thisThrow - lastThrow > 250 ) then
+                sound.play( "wrench1" )
+                lastThrow = thisThrow
+                local fn = "images/" .. tiles.wrench .. ".png"
+                local wrench = display.newImageRect( grp.terrain, fn, system.ResourceDirectory, 48, 48 )
+                wrench.name = "wrench"
+                wrench.x = player.x
+                wrench.y = player.y - player.height / 1.9
+                local wo = getOutline( { image = tiles.wrench } )
+                physics.addBody( wrench, "dynamic", { outline=wo } )
+                player:throw()
+                wrench:applyLinearImpulse( 0, wrenchForce, -24, 24 )
             end
         end
         local lx, ly = player:getLinearVelocity()
@@ -419,41 +569,13 @@ end
 local function init()
     local parent = scene.view
     
-    local btnOpts = {
-        parent = grp.ui,
-        text = "Edit",
-        x = 150,
-        y = 100,
-        width = 200,
-        height = 100,
-        action = gotoGridMaker
-    }
-    btns.edit = ui.newButton( btnOpts )
-        
-    local fn = "images/" .. tiles.bg .. ".png"
-    local bgImg = display.newImageRect( grp.bg1, fn, system.ResourceDirectory, 1920, 3240 )
-    bgImg.x = _G.CX
-    bgImg.y = _G.CY * 3
---    local bgBox = display.newRect( grp.bg1, _G.CX, _G.CY, _G.CW, _G.CH )
---    bgBox.fill = { 0.7, 0.7, 0.7, 1 }
-    
+    if ( params.gridID ) then
+        gridID = params.gridID
+    end
     loadGrid()
-    grp.cam.y = grp.grid.yMin
---    grp.terrain.y = grp.grid.yMin
---    local grid = {}
---    
---    local x = tiles.size / 2
---    local y = _G.CH
---    for i = 1, 21 do
---        grid[i] = display.newRect( grp.grid, x, y - tiles.size / 2, tiles.size, tiles.size )
---        x = x + tiles.size
---        if ( i % 3 == 0 ) then
---            y = y - tiles.size
---        end
---        physics.addBody( grid[i], "static", { friction=0.3 } )
---        grid[i].name = "platform"
---    end
     spawnPlayer()
+    audio.setVolume( _G.MUSICVOLUME, { channel=1 } )
+    audio.play( sound.songs[1], { channel=1, loops=-1 } )
 end
     
 
@@ -471,7 +593,7 @@ function scene:create( event )
     
     grp.grid = display.newGroup()
     grp.cam:insert( grp.grid )
-    grp.grid.yMin = -_G.CH * 2
+    grp.grid.yMin = gridMinY
     grp.grid.yMax = 0
     createGrid()
     grp.grid.isVisible = false
@@ -482,10 +604,48 @@ function scene:create( event )
     grp.ui = display.newGroup()
     sceneGroup:insert( grp.ui )
     
+    local btnOpts = {
+        parent = grp.ui,
+        x = 200,
+        y = _G.CH - 100,
+        text = "MENU",
+        action = gotoTitle
+    }
+    btns.menu = ui.newButton( btnOpts )
+    
+    btnOpts.text = "<"
+    btnOpts.x = btnOpts.x + 250
+    btnOpts.action = function()
+        gridID = gridID - 1
+        if ( gridID < 1 ) then
+            gridID = 1
+        end
+        loadGrid()
+        spawnPlayer()
+    end
+    btns.prev = ui.newButton( btnOpts )
+    
+    btnOpts.text = ">"
+    btnOpts.x = btnOpts.x + 250
+    btnOpts.action = function()
+        gridID = gridID + 1
+        loadGrid()
+        spawnPlayer()
+    end
+    btns.next = ui.newButton( btnOpts )
+    
+        
+    local fn = "images/" .. tiles.bg .. ".png"
+    local bgImg = display.newImageRect( grp.bg1, fn, system.ResourceDirectory, 1920, 3240 )
+    bgImg.x = _G.CX
+    bgImg.y = _G.CY * 3
+--    local bgBox = display.newRect( grp.bg1, _G.CX, _G.CY, _G.CW, _G.CH )
+--    bgBox.fill = { 0.7, 0.7, 0.7, 1 }
+    
     local txtOpts = {
         parent = grp.ui,
         x = _G.CW - 300,
-        y = 100,
+        y = _G.CH - 100,
         font = native.systemFont,
         fontSize = 48,
         text = "LEVEL " .. gridID,

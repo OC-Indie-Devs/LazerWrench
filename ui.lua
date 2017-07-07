@@ -11,6 +11,11 @@
 
 local ui = {}
 
+ui.font = native.systemFont
+ui.w = 200
+ui.h = 100
+ui.fontSize = 36
+ui.align = "center"
 
 function ui.onButtonTouch( self, event )
     dbg.out( "ui.onButtonTouch: phase=" .. event.phase )
@@ -39,8 +44,8 @@ function ui.newButton( options )
     local o = options or {}
     o.x = o.x or _G.CX
     o.y = o.y or _G.CY
-    o.width = o.width or 200
-    o.height = o.height or 200
+    o.width = o.width or ui.w
+    o.height = o.height or ui.h
     o.fill = o.fill or { 0.7, 0.7, 0.7, 1 }
     
     local button = display.newGroup()
@@ -60,9 +65,9 @@ function ui.newButton( options )
             x = 0,
             y = 0,
             width = o.width * 0.9,
-            font = o.font or native.systemFont,
-            fontSize = o.fontSize or 36,
-            align = o.textAlign or "center"
+            font = o.font or ui.font,
+            fontSize = o.fontSize or ui.fontSize,
+            align = o.textAlign or ui.align
         }
         button.text = display.newText( textOpts )
         o.textColor = o.textColor or { 0, 0, 0, 1 }

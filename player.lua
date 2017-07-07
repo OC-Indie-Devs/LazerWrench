@@ -7,6 +7,7 @@
 -- @copyright 2015-2016 shark apps, LLC
 -- @license all rights reserved.
 ----------------------------------------------------------
+local sound = require( "sounds" )
 
 local player = {}
 
@@ -63,7 +64,7 @@ player.seqData = {
     },
     {
         name = "airattack",
-        start = playerSheetInfo:getFrameIndex( "JUMP_000" ),
+        start = playerSheetInfo:getFrameIndex( "jump_throw" ),
         count = 1,
         time = 100,
         loopCount = 0,   -- Optional ; default is 0 (loop indefinitely)
@@ -101,6 +102,9 @@ function player.new()
             dbg.out( "player.setAnim: animation set to " .. animName )
             self.sprite:setSequence( animName )
             self.sprite:play()
+            if ( animName ~= "throwing" ) and ( animName ~= "airattack" ) then
+                self.lastAnim = animName
+            end
         end
     end
     newPlayer.jump = function( self, direction )
@@ -108,6 +112,7 @@ function player.new()
             self.isJumping = 0
         end
         if ( self.isJumping < jumpLimit ) then
+            sound.play( "jump1" )
             self:setAnim( "jumping" )
             local xForce = 0
             if ( direction ) then
@@ -126,6 +131,20 @@ function player.new()
             self.onGround = nil
             self.onWall = nil
         end
+    end
+    newPlayer.throw = function( self )
+        if ( self.onGround ) then
+            self:setAnim( "throwing" )
+        else
+            self:setAnim( "airattack" )
+        end
+        self.isAttacking = true
+        local stopAnim = function()
+            if ( self.onGround ) then
+                self:setAnim( self.lastAnim )
+            end
+        end
+        self.animTimer = timer.performWithDelay( 200, stopAnim )
     end
     newPlayer.move = function( self, direction )
         if ( self.onGround == nil ) then

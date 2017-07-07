@@ -37,8 +37,8 @@ settings = {
    iphone = {
       -- https://developer.apple.com/library/ios/documentation/General/Reference/InfoPlistKeyReference/Introduction/Introduction.html#//apple_ref/doc/uid/TP40009248-SW1
       plist = {
-         CFBundleDisplayName             = "LD35_Shapeshifter",
-         CFBundleName                    = "LD35_Shapeshifter",
+         CFBundleDisplayName             = "Lazer Wrench",
+         CFBundleName                    = "Lazer Wrench",
          UIApplicationExitsOnSuspend     = false,
          UIPrerenderedIcon               = true,
          UIStatusBarHidden               = true,
@@ -88,22 +88,22 @@ settings = {
 --  Desktop Settings 
 -------------------------------------------------------------------------------
    window = {
-      defaultMode                     = "normal",
-      resizable                       = true,
+      defaultMode                     = "maximized",
+      resizable                       = false,
       enableCloseButton               = true,
       suspendWhenMinimized            = true,
       enableMaximizeButton            = true,
-      defaultViewWidth                = 1024,
-      defaultViewHeight               = 768,
-      minViewWidth                    = 480,
-      minViewHeight                   = 320,
+      defaultViewWidth                = 1920,
+      defaultViewHeight               = 1080,
+      minViewWidth                    = 1280,
+      minViewHeight                   = 720,
       titleText = {
-         default  = "LD35_Shapeshifter",
-         ["en‐us"] = "LD35_Shapeshifter (English‐USA)",
-         ["en‐gb"] = "LD35_Shapeshifter (English‐UK)",
-         ["en"]   = "LD35_Shapeshifter (English)",
-         ["fr"]   = "LD35_Shapeshifter (French)",
-         ["es"]   = "LD35_Shapeshifter (Spanish)",
+         default  = "Lazer Wrench",
+         ["en‐us"] = "Lazer Wrench (English‐USA)",
+         ["en‐gb"] = "Lazer Wrench (English‐UK)",
+         ["en"]   = "Lazer Wrench (English)",
+         ["fr"]   = "Lazer Wrench (French)",
+         ["es"]   = "Lazer Wrench (Spanish)",
       },
    },
 

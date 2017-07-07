@@ -12,6 +12,7 @@
 
 local composer = require( "composer" )
 local scene = composer.newScene()
+local params = nil
 
 local tiles = require( "tiles" )
 local ui = require( "ui" )
@@ -59,17 +60,37 @@ local function addShape( shape, blockID )
 end
 
 
-local function addImage( image, blockID )
+local function addImage( image, blockID, options )
+    local o = options or {}
+    
     local g = grp.grid[blockID]
     
     local lx, ly = g:localToContent( 0, 0 )
     dbg.out( "addShape: add " .. image .. " to grid " .. blockID .. " x=" .. lx .. " y=" .. ly )
-    local fn = "images/" .. image .. ".png"
-    local tileImg = display.newImageRect( g, fn, system.ResourceDirectory, 288, 288 )
+    local tileImg
+    if ( o.sheet ) then
+        tileImg = tiles.getTile( o.image, { sheet=o.sheet } )
+        g:insert( tileImg )
+    else
+        local fn = "images/" .. image .. ".png"
+        tileImg = display.newImageRect( g, fn, system.ResourceDirectory, 288, 288 )
+    end
+    if ( o.xScale ) then
+        tileImg.xScale = o.xScale
+    end
+    local name = "platform"
+    if ( image == "ROBOT/CORE" ) then
+        name = "robot"
+    end
+    if ( image == "STAND_000" ) then
+        name = "player"
+    end
     tileImg.gridInfo = {
-        name = "platform",
+        name = name,
         blockID = blockID,
         image = image,
+        sheet = o.sheet,
+        xScale = o.xScale,
         rotation = tileImg.rotation
     }
     return tileImg
@@ -133,7 +154,7 @@ local function addToGrid( blockID, options )
     if ( o.image ) then
         if ( o.sheet ) then
             dbg.out( "addToGrid: image=" .. o.image .. ", sheet=" .. o.sheet )
-            newImg = tiles.getTile( o.image, { sheet=o.sheet } )
+            newImg = tiles.getTile( o.image, { sheet=o.sheet, xScale=o.xScale } )
             block:insert( newImg )
         else
             dbg.out( "addToGrid: image=" .. o.image )
@@ -222,7 +243,7 @@ local function loadGrid()
     else
         dbg.out( "loadGrid: " .. fn .. " could not be loaded" )
     end
-    gridText.text = gridID
+    gridText.text = "LEVEL " .. gridID
 end
 
 
@@ -287,13 +308,96 @@ local function removeBuildMenu()
 end
 
 
+local function addItem( self, options )
+        local o = options or {}
+        
+        local itemHeight = tiles.size + 20
+        local idx = self.numItems + 1
+    
+        local item = display.newGroup()
+        item.y = self.yOffset
+--        item.y = i * itemHeight - itemHeight / 2
+        local bg = display.newRect( item, 400, 0, 800, itemHeight )
+        if ( idx % 2 == 0 ) then
+            bg.fill = { 0.5, 0.5, 0.5, 1 }
+        else
+            bg.fill = { 0.8, 0.8, 0.8, 1 }
+        end
+        bg.id = idx 
+        bg.touch = function( self, event )
+            if ( event.phase == "began" ) then
+                display.getCurrentStage():setFocus( self )
+                self.isFocus = true
+            
+            elseif ( self.isFocus ) then
+                if ( event.phase == "ended" ) or ( event.phase == "cancelled" ) then
+                    dbg.out( "menu item " .. bg.id .. " tapped" )
+                    addImage( o.image, o.blockID, o )
+                    removeBuildMenu()
+                    display.getCurrentStage():setFocus( nil )
+                    self.isFocus = nil
+                end
+            end
+            return true
+        end
+        bg:addEventListener( "touch" )
+        bg.finalize = function( self, event )
+            if ( bg.touch ) then
+                bg:removeEventListener( "touch" )
+            end
+        end
+        
+        local tileImg
+        if ( o.sheet ) then
+            tileImg = tiles.getTile( o.image, { sheet=o.sheet } )
+            item:insert( tileImg )
+        else
+            local fn = "images/" .. o.image .. ".png"
+            tileImg = display.newImageRect( item, fn, system.ResourceDirectory, tiles.size, tiles.size )
+        end
+        tileImg.x = tiles.size / 1.5
+        
+        if ( o.xScale ) then
+            tileImg.xScale = o.xScale
+        end
+
+        local txtOpts = {
+            parent = item,
+            x = tileImg.x + tiles.size + 300,
+            text = o.image,
+            width = 600,
+            font = native.systemFont,
+            fontSize = 48,
+            align = "left",
+        }
+        local txt = display.newText( txtOpts )
+        txt:setFillColor( 0 )
+        self:insert( item )
+        self.yOffset = self.yOffset + itemHeight
+        self.numItems = self.numItems + 1
+end
+
+
 local function showBuildMenu( blockID )
     buildMenu = display.newGroup()
     buildMenu.x = _G.CX
     buildMenu.y = _G.CY
     
-    local bgBox = display.newRect( buildMenu, 0, 0, 1000, 900 )
-    bgBox:setFillColor( 0.5, 0.2, 0.2, 1 )
+    local bgBox = display.newRect( buildMenu, 0, 0, _G.CW, _G.CH )
+    bgBox:setFillColor( 0, 0, 0, 0.5 )
+    bgBox.touch = function( self, event )
+        -- prevents touch events from leaking to grid below
+        return true
+    end
+    bgBox:addEventListener( "touch" )
+    bgBox.finalize = function( self, event )
+        if ( bgBox.touch ) then
+            bgBox:removeEventListener( "touch" )
+        end
+    end
+    
+    local listBg = display.newRect( buildMenu, 0, 0, 1000, 900 )
+    listBg:setFillColor( 0.5, 0.2, 0.2, 1 )
     
     local btnOpts = {
         parent = buildMenu,
@@ -301,7 +405,7 @@ local function showBuildMenu( blockID )
         width = 200,
         height = 100,
         x = 350,
-        y = 400,
+        y = 375,
         action = removeBuildMenu
     }
     local cancelButton = ui.newButton( btnOpts )
@@ -318,70 +422,29 @@ local function showBuildMenu( blockID )
     
     local svOpts = {
         x = _G.CX,
-        y = _G.CY,
+        y = _G.CY - 50,
         width = 800,
-        height = 600,
+        height = 700,
     }
     local widget = require( "widget" )
     local itemList  = widget.newScrollView( svOpts )
+    itemList.addItem = addItem
+    itemList.numItems = 0
     buildMenu.itemList = itemList
         
-    local shapes = { "circle", "square", "triangle" }
+--    local shapes = { "circle", "square", "triangle" }
     local shapeImages = { "spr_shapes_no3d_03", "spr_shapes_no3d_05", "spr_shapes_no3d_07" }
     
     local itemHeight = tiles.size + 20
-    local y = itemHeight / 2
+    itemList.yOffset = itemHeight / 2
     for i = 1, #shapeImages do
-        local item = display.newGroup()
-        item.y = y
---        item.y = i * itemHeight - itemHeight / 2
-        local bg = display.newRect( item, 400, 0, 800, itemHeight )
-        if ( i % 2 == 0 ) then
-            bg.fill = { 0.5, 0.5, 0.5, 1 }
-        else
-            bg.fill = { 0.8, 0.8, 0.8, 1 }
-        end
-        bg.id = i
-        bg.tap = function( self, event )
-            dbg.out( "menu item " .. bg.id .. " tapped" )
-            addImage( shapeImages[i], blockID )
-            removeBuildMenu()
-            return true
-        end
-        bg:addEventListener( "tap" )
-        
-        local fn = "images/" .. shapeImages[i] .. ".png"
-        local tileImg = display.newImageRect( item, fn, system.ResourceDirectory, tiles.size, tiles.size )
-        tileImg.x = tiles.size / 1.5
-
---        if ( shapes[i] == "circle" ) then
---            tileImg = display.newCircle( item, tiles.size / 1.5, 0, tiles.size / 2 )
---            
---        elseif ( shapes[i] == "square" ) then
---            tileImg = display.newRect(item, tiles.size / 1.5, 0, tiles.size, tiles.size )
---            
---        elseif ( shapes[i] == "triangle" ) then
---            local vertices = { 
---                0, -tiles.size / 2,
---                tiles.size /2, tiles.size / 2,
---                -tiles.size / 2, tiles.size / 2
---            }
---            tileImg = display.newPolygon( item, tiles.size / 1.5, 0, vertices )
---        end
-        local txtOpts = {
-            parent = item,
-            x = tileImg.x + tiles.size + 300,
-            text = shapeImages[i],
-            width = 600,
-            font = native.systemFont,
-            fontSize = 48,
-            align = "left",
-        }
-        local txt = display.newText( txtOpts )
-        txt:setFillColor( 0 )
-        itemList:insert( item )
-        y = y + itemHeight
+        itemList:addItem( { image=shapeImages[i], blockID=blockID } )
     end
+    
+    itemList:addItem( { image=tiles.robotCore.image, blockID=blockID } )
+    
+    itemList:addItem( { image=tiles.player.image, sheet=tiles.player.sheet, blockID=blockID } )
+    itemList:addItem( { image=tiles.player.image, sheet=tiles.player.sheet, xScale=-1, blockID=blockID } )
     
 --    local sheet = tiles.sheets.square
 --    local fName = "images/" .. sheet .. ".png"
@@ -451,16 +514,45 @@ local function createGrid()
             local box = display.newRect( gridBox, 0, 0, size * 0.9, size * 0.9 )
             box.fill = { 1, 1, 1, 0.5 }
             box.id = grp.grid.numChildren
-            box.tap = function( self, event )
-                if ( buildMenu ) then
-                    -- ignore tap event when buildMenu is showing
-                    return true
+            box.touch = function( self, event )
+                dbg.out( "box.touch: phase=" .. event.phase )
+                if ( self.startTouch ) then
+                    if ( system.getTimer() - self.startTouch >= 250 ) then
+                        if not touchPad.isFocus then
+                            local e = event
+                            e.phase = "began"
+                            e.xStart, e.yStart = touchPad:contentToLocal( self:localToContent( event.xStart, event.yStart ) )
+                            e.x, e.y = e.xStart, e.yStart
+                            touchPad:touch( e )
+                        end
+                        local e = event
+                        e.x, e.y = touchPad:contentToLocal( self:localToContent( event.x, event.y ) )
+                        touchPad:touch( e )
+                        return true
+                    end
                 end
-                dbg.out( "grid block " .. box.id .. " tapped" )
-                showBuildMenu( box.id )
+                if ( event.phase == "began" ) then
+                    self.startTouch = system.getTimer()
+                    
+                elseif ( event.phase == "ended" ) or ( event.phase == "cancelled" ) then
+                    if ( self.startTouch ) then
+                        if ( system.getTimer() - self.startTouch < 250 ) then
+                            dbg.out( "grid block " .. box.id .. " tapped" )
+                            showBuildMenu( box.id )
+                            self.startTouch = nil
+                        else
+                            return false
+                        end
+                    end
+                end
                 return true
             end
-            box:addEventListener( "tap" ) 
+            box:addEventListener( "touch" ) 
+            box.finalize = function( self, event )
+                if ( self.touch ) then
+                    self:removeEventListener( "touch" )
+                end
+            end
             gridBox.gridInfo = {
                 blockID = box.id,
                 x = x,
@@ -471,12 +563,15 @@ local function createGrid()
 end
 
 
-local function gotoGame()
-    composer.gotoScene( "game", {} )
+local function gotoTitle()
+    composer.gotoScene( "title", { params={ gridID=gridID } })
 end
 
 
 local function init()
+    if ( params ) and ( params.gridID ) then
+        gridID = params.gridID
+    end
     loadGrid()
     grp.grid.y = grp.grid.yMin
 end
@@ -505,14 +600,14 @@ function scene:create( event )
         parent = grp.ui,
         x = 200,
         y = 100,
-        text = "Done",
+        text = "MENU",
         font = native.systemFont,
         fontSize = 36,
         width = 200,
         height = 100,
         action = function()
             saveGrid()
-            gotoGame()
+            gotoTitle()
         end
     }
     backButton = ui.newButton( btnOpts )
@@ -520,6 +615,7 @@ function scene:create( event )
     btnOpts.text = "<"
     btnOpts.x = btnOpts.x + 250
     btnOpts.action = function()
+        saveGrid()
         gridID = gridID - 1
         if ( gridID < 1 ) then
             gridID = 1
@@ -531,6 +627,7 @@ function scene:create( event )
     btnOpts.text = ">"
     btnOpts.x = btnOpts.x + 250
     btnOpts.action = function()
+        saveGrid()
         gridID = gridID + 1
         loadGrid()
     end

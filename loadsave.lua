@@ -43,7 +43,9 @@ end
 function _M.copyDataFiles()
     local srcFiles = {
         "gridsave1.json",
-        "savedgrids.json"
+        "gridsave2.json",
+        "gridsave3.json",
+--        "savedgrids.json"  -- causes all saved grids to be ignored
     }
     for i = 1, #srcFiles do
         -- Path for the file to write

@@ -15,19 +15,16 @@
 io.output():setvbuf("no")
 display.setStatusBar(display.HiddenStatusBar)
 
----- Load and Initialize SSK
---require "ssk.loadSSK"
---
---
----- Load and Start RG Super Meter
---local rgmeter = require "rgmeter.rgmeter"
---rgmeter.setMaxMainMem( 16 * 1024 ) -- 16K KB == 16 MB
---rgmeter.setMaxVidMem( 16 * 1024 ) -- 16K KB == 16 MB
---rgmeter.setAverageWindow(30)
---rgmeter.setUpdatePeriod(5)
---rgmeter.enableCollection( true )
-----rgmeter.setFontScale(0.8)
---rgmeter.create( display.contentCenterX, display.contentCenterY, display.actualContentWidth, false, true )
+_G.VERSION = "1.0.2"
+-- 1.0.2
+-- fixed Jason's last name spelling in title credits
+-- 1.0.1 
+-- added spawn point to editor
+-- fixed more editor bugs
+-- added effects when robot core is hit by wrench
+-- added top and corner borders
+-- aadded 2 levels and re-arranged levels
+
 
 _G.CX = display.contentCenterX
 _G.CY = display.contentCenterY
@@ -36,9 +33,19 @@ _G.CH = display.contentHeight
 
 dbg = require( "dbg" )
 
-local ls = require( "loadsave" )
-ls.copyDataFiles()
+_G.audioFormat = "wav"
+_G.musicFormat = "wav"
+_G.MUSICVOLUME = 0.75
+_G.FXVOLUME = 1
+
+local sound = require( "sounds" )
+sound.init()
+
+
+--local ls = require( "loadsave" )
+--ls.copyDataFiles()
+-- not needed, done in getSavedGrids in game and gridMaker modules
 
 -- go to main game scene
 local composer = require( "composer" )
-composer.gotoScene( "game", {} )
+composer.gotoScene( "title", {} )
